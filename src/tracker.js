@@ -58,3 +58,65 @@ async function trackSubmission(subNumber)
 .then(data => console.log("Backend response:", data))
 .catch(err => console.error("Error:", err));
 }
+
+
+
+
+
+<script>
+document.getElementById('submitButton').addEventListener('click', () => {
+  const number = document.getElementById('numberInput').value;
+  const statusDiv = document.getElementById('status');
+
+  if (!number) {
+    statusDiv.textContent = 'Please enter a number.';
+    return;
+  }
+
+  statusDiv.textContent = 'Starting process...';
+
+  // Step 1: Start the process
+  fetch('https://yourdomain.com/start-process', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ number: number })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (!data.tracking_id) {
+      statusDiv.textContent = 'Error: No tracking ID returned.';
+      return;
+    }
+
+    const trackingId = data.tracking_id;
+    statusDiv.textContent = `Tracking ID received: ${trackingId}. Checking status...`;
+
+    // Step 2: Poll for result every 5 seconds
+    const pollInterval = setInterval(() => {
+      fetch(`https://yourdomain.com/check-status/${trackingId}`)
+        .then(response => response.json())
+        .then(statusData => {
+          if (statusData.status === 'done') {
+            clearInterval(pollInterval);
+            statusDiv.textContent = `✅ Done! Result: ${statusData.result}`;
+          } else if (statusData.status === 'error') {
+            clearInterval(pollInterval);
+            statusDiv.textContent = `❌ Error: ${statusData.result}`;
+          } else {
+            statusDiv.textContent = `⏳ Status: ${statusData.status}...`;
+          }
+        })
+        .catch(err => {
+          clearInterval(pollInterval);
+          statusDiv.textContent = '❌ Error polling server.';
+          console.error(err);
+        });
+    }, 5000); // every 5 seconds
+  })
+  .catch(err => {
+    statusDiv.textContent = '❌ Error starting process.';
+    console.error(err);
+  });
+});
+</script>
+
